@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // APIError is a non-2xx response from the Ravenna API. Ravenna returns a
@@ -15,6 +16,11 @@ type APIError struct {
 	StatusCode int
 	Code       string
 	Message    string
+
+	// retryAfter carries the server's Retry-After hint to the backoff
+	// calculation. Unexported: it is transport detail, not part of the error
+	// users see.
+	retryAfter time.Duration
 }
 
 func (e *APIError) Error() string {
