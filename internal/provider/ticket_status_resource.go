@@ -131,6 +131,32 @@ func (r *ticketStatusResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// POST /statuses does not accept an order, so a user-specified order is
+	// applied with a follow-up update rather than being silently ignored.
+	if !plan.Order.IsNull() && !plan.Order.IsUnknown() {
+		wanted := int(plan.Order.ValueInt64())
+		if wanted != st.Order {
+			reordered, err := r.data.Client.UpdateStatus(ctx, ravenna.StatusUpdateRequest{
+				ID:    st.ID,
+				Order: &wanted,
+			})
+			if err != nil {
+				// The status exists, so persist it before failing — otherwise
+				// Terraform loses track of it and the next apply orphans it.
+				applyStatus(&plan, st)
+				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+				resp.Diagnostics.AddError(
+					"Ticket status created but could not be ordered",
+					fmt.Sprintf("The status was created with id %s but setting order=%d failed: %s. "+
+						"The status is now under Terraform management; re-apply to retry the ordering.",
+						st.ID, wanted, err),
+				)
+				return
+			}
+			st = reordered
+		}
+	}
+
 	applyStatus(&plan, st)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }

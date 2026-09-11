@@ -56,3 +56,39 @@ resource "ravenna_ticket_status" "test" {
 }
 `, baseURL, label)
 }
+
+func TestAccTicketStatusResource_honoursExplicitOrder(t *testing.T) {
+	srv := newFakeRavenna(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testStatusConfigWithOrder(srv.URL, "Waiting on vendor", 7),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("ravenna_ticket_status.test", "order", "7"),
+					resource.TestCheckResourceAttr("ravenna_ticket_status.test", "label", "Waiting on vendor"),
+				),
+			},
+		},
+	})
+}
+
+func testStatusConfigWithOrder(baseURL, label string, order int) string {
+	return fmt.Sprintf(`
+provider "ravenna" {
+  api_token = "test-token"
+  base_url  = %[1]q
+}
+
+data "ravenna_status_group" "pending" {
+  label = "Pending"
+}
+
+resource "ravenna_ticket_status" "test" {
+  label           = %[2]q
+  status_group_id = data.ravenna_status_group.pending.id
+  order           = %[3]d
+}
+`, baseURL, label, order)
+}
