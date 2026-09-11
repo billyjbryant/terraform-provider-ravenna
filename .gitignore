@@ -1,0 +1,9 @@
+/terraform-provider-ravenna
+/dist/
+*.test
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+.env
