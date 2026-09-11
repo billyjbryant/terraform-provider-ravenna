@@ -120,11 +120,14 @@ func (p *ravennaProvider) Resources(_ context.Context) []func() resource.Resourc
 	return []func() resource.Resource{
 		NewChannelResource,
 		NewTagResource,
+		NewTicketStatusResource,
 	}
 }
 
 func (p *ravennaProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewStatusGroupDataSource,
+	}
 }
 
 func firstNonEmpty(values ...string) string {

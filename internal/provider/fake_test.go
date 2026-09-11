@@ -17,12 +17,17 @@ type fakeRavenna struct {
 	nextID   int
 	channels map[string]map[string]any
 	tags     map[string]map[string]any
+	statuses map[string]map[string]any
 }
 
 func newFakeRavenna(t *testing.T) *httptest.Server {
 	t.Helper()
 
-	f := &fakeRavenna{channels: map[string]map[string]any{}, tags: map[string]map[string]any{}}
+	f := &fakeRavenna{
+		channels: map[string]map[string]any{},
+		tags:     map[string]map[string]any{},
+		statuses: map[string]map[string]any{},
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/queues", func(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +70,20 @@ func newFakeRavenna(t *testing.T) *httptest.Server {
 			f.updateTag(w, r, id)
 		case http.MethodDelete:
 			f.deleteTag(w, id)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/statuses", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			f.createStatus(w, r)
+		case http.MethodGet:
+			f.listStatuses(w)
+		case http.MethodPut:
+			f.updateStatus(w, r)
+		case http.MethodDelete:
+			f.deleteStatus(w, r.URL.Query().Get("id"))
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -238,6 +257,80 @@ func (f *fakeRavenna) listTags(w http.ResponseWriter) {
 		items = append(items, tag)
 	}
 	writeJSON(w, map[string]any{"items": items, "totalCount": len(items)})
+}
+
+func (f *fakeRavenna) createStatus(w http.ResponseWriter, r *http.Request) {
+	var body map[string]any
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.nextID++
+	id := fmt.Sprintf("s_%d", f.nextID)
+
+	st := map[string]any{
+		"id":            id,
+		"label":         body["label"],
+		"statusGroupId": body["statusGroupId"],
+		"order":         len(f.statuses) + 1,
+		"system":        false,
+	}
+	f.statuses[id] = st
+	writeJSON(w, st)
+}
+
+func (f *fakeRavenna) updateStatus(w http.ResponseWriter, r *http.Request) {
+	var body map[string]any
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	id, _ := body["id"].(string)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	st, ok := f.statuses[id]
+	if !ok {
+		writeAPIError(w, http.StatusNotFound, "not_found", "no such status")
+		return
+	}
+	for _, k := range []string{"label", "order"} {
+		if v, present := body[k]; present {
+			st[k] = v
+		}
+	}
+	writeJSON(w, st)
+}
+
+func (f *fakeRavenna) deleteStatus(w http.ResponseWriter, id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, ok := f.statuses[id]; !ok {
+		writeAPIError(w, http.StatusNotFound, "not_found", "no such status")
+		return
+	}
+	delete(f.statuses, id)
+	w.WriteHeader(http.StatusOK)
+}
+
+// listStatuses returns the {statuses, groups} shape. The groups are fixed
+// because Ravenna exposes no way to create them.
+func (f *fakeRavenna) listStatuses(w http.ResponseWriter) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	items := make([]map[string]any, 0, len(f.statuses))
+	for _, st := range f.statuses {
+		items = append(items, st)
+	}
+	writeJSON(w, map[string]any{
+		"statuses": items,
+		"groups": []map[string]any{
+			{"id": "sg_open", "label": "Open", "order": 1, "color": "blue", "workspaceId": "ws_default"},
+			{"id": "sg_pending", "label": "Pending", "order": 2, "color": "amber", "workspaceId": "ws_default"},
+		},
+	})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
