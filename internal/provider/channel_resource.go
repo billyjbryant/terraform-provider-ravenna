@@ -101,15 +101,19 @@ func (r *channelResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"request_channel_id": schema.StringAttribute{
-				MarkdownDescription: "Slack channel that requests arrive on. Changing this forces a new channel.",
-				Optional:            true,
+				MarkdownDescription: "Slack channel that requests arrive on. Write-only: the Ravenna API " +
+					"accepts this at creation but never returns it, so Terraform cannot detect drift on it " +
+					"and an imported channel will show it as null. Changing this forces a new channel.",
+				Optional: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"triage_channel_id": schema.StringAttribute{
-				MarkdownDescription: "Slack channel used for triage. Changing this forces a new channel.",
-				Optional:            true,
+				MarkdownDescription: "Slack channel used for triage. Write-only: the Ravenna API accepts " +
+					"this at creation but never returns it, so Terraform cannot detect drift on it and an " +
+					"imported channel will show it as null. Changing this forces a new channel.",
+				Optional: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -257,6 +261,10 @@ func (r *channelResource) workspaceFor(attr types.String) string {
 	return r.data.WorkspaceID
 }
 
+// applyChannel copies API state onto the model. request_channel_id and
+// triage_channel_id are deliberately absent: the API never returns them,
+// and the response's unlabelled slackChannels array cannot distinguish
+// which link is which. Read preserves their prior state values instead.
 func applyChannel(m *channelResourceModel, ch *ravenna.Channel) {
 	m.ID = types.StringValue(ch.ID)
 	m.Name = types.StringValue(ch.Name)
