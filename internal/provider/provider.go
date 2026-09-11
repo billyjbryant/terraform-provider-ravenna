@@ -119,6 +119,7 @@ func (p *ravennaProvider) Configure(ctx context.Context, req provider.ConfigureR
 func (p *ravennaProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewChannelResource,
+		NewTagResource,
 	}
 }
 

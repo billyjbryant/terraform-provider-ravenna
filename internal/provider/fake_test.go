@@ -16,12 +16,13 @@ type fakeRavenna struct {
 	mu       sync.Mutex
 	nextID   int
 	channels map[string]map[string]any
+	tags     map[string]map[string]any
 }
 
 func newFakeRavenna(t *testing.T) *httptest.Server {
 	t.Helper()
 
-	f := &fakeRavenna{channels: map[string]map[string]any{}}
+	f := &fakeRavenna{channels: map[string]map[string]any{}, tags: map[string]map[string]any{}}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/queues", func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +44,27 @@ func newFakeRavenna(t *testing.T) *httptest.Server {
 			f.updateChannel(w, r, id)
 		case http.MethodDelete:
 			f.deleteChannel(w, id)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/tags", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			f.createTag(w, r)
+		case http.MethodGet:
+			f.listTags(w)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/tags/", func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimPrefix(r.URL.Path, "/tags/")
+		switch r.Method {
+		case http.MethodPut:
+			f.updateTag(w, r, id)
+		case http.MethodDelete:
+			f.deleteTag(w, id)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -150,6 +172,70 @@ func (f *fakeRavenna) listChannels(w http.ResponseWriter) {
 	items := make([]map[string]any, 0, len(f.channels))
 	for _, ch := range f.channels {
 		items = append(items, ch)
+	}
+	writeJSON(w, map[string]any{"items": items, "totalCount": len(items)})
+}
+
+func (f *fakeRavenna) createTag(w http.ResponseWriter, r *http.Request) {
+	var body map[string]any
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.nextID++
+	id := fmt.Sprintf("t_%d", f.nextID)
+
+	tag := map[string]any{
+		"id":          id,
+		"name":        body["name"],
+		"color":       body["color"],
+		"description": body["description"],
+		"workspaceId": "ws_default",
+	}
+	f.tags[id] = tag
+	writeJSON(w, tag)
+}
+
+func (f *fakeRavenna) updateTag(w http.ResponseWriter, r *http.Request, id string) {
+	var body map[string]any
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	tag, ok := f.tags[id]
+	if !ok {
+		writeAPIError(w, http.StatusNotFound, "not_found", "no such tag")
+		return
+	}
+	for _, k := range []string{"name", "color", "description"} {
+		if v, present := body[k]; present {
+			tag[k] = v
+		}
+	}
+	writeJSON(w, tag)
+}
+
+func (f *fakeRavenna) deleteTag(w http.ResponseWriter, id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, ok := f.tags[id]; !ok {
+		writeAPIError(w, http.StatusNotFound, "not_found", "no such tag")
+		return
+	}
+	delete(f.tags, id)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (f *fakeRavenna) listTags(w http.ResponseWriter) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	items := make([]map[string]any, 0, len(f.tags))
+	for _, tag := range f.tags {
+		items = append(items, tag)
 	}
 	writeJSON(w, map[string]any{"items": items, "totalCount": len(items)})
 }
