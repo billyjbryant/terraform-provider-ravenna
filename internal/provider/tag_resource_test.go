@@ -50,6 +50,24 @@ func TestAccTagResource_rejectsUnknownColor(t *testing.T) {
 	})
 }
 
+func TestAccTagResource_clearsDescription(t *testing.T) {
+	srv := newFakeRavenna(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testTagConfig(srv.URL, "hardware", "blue", "Physical kit"),
+				Check:  resource.TestCheckResourceAttr("ravenna_tag.test", "description", "Physical kit"),
+			},
+			{
+				Config: testTagConfigNoDescription(srv.URL, "hardware", "blue"),
+				Check:  resource.TestCheckNoResourceAttr("ravenna_tag.test", "description"),
+			},
+		},
+	})
+}
+
 func testTagConfig(baseURL, name, color, description string) string {
 	return fmt.Sprintf(`
 provider "ravenna" {
@@ -63,4 +81,18 @@ resource "ravenna_tag" "test" {
   description = %[4]q
 }
 `, baseURL, name, color, description)
+}
+
+func testTagConfigNoDescription(baseURL, name, color string) string {
+	return fmt.Sprintf(`
+provider "ravenna" {
+  api_token = "test-token"
+  base_url  = %[1]q
+}
+
+resource "ravenna_tag" "test" {
+  name  = %[2]q
+  color = %[3]q
+}
+`, baseURL, name, color)
 }

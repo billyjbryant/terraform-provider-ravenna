@@ -30,10 +30,12 @@ type TagCreateRequest struct {
 	Color       string  `json:"color"`
 }
 
-// TagUpdateRequest is the body of PUT /tags/{id}.
+// TagUpdateRequest is the body of PUT /tags/{id}. Description omits
+// omitempty deliberately: a nil value must marshal as "description": null
+// so clearing it reaches the server, rather than being silently dropped.
 type TagUpdateRequest struct {
 	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	Description *string `json:"description"`
 	Color       *string `json:"color,omitempty"`
 }
 

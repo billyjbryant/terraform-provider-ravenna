@@ -73,6 +73,25 @@ func TestCreateTag(t *testing.T) {
 	}
 }
 
+func TestListTags_PassesWorkspaceID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("workspaceId"); got != "ws_1" {
+			t.Errorf("workspaceId = %q, want ws_1", got)
+		}
+		_, _ = w.Write([]byte(`{"items":[{"id":"t_1","name":"hardware","color":"blue","workspaceId":"ws_1"}],"totalCount":1}`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(srv.URL, "test-token")
+	tags, err := c.ListTags(context.Background(), "ws_1")
+	if err != nil {
+		t.Fatalf("ListTags: %v", err)
+	}
+	if len(tags) != 1 || tags[0].ID != "t_1" {
+		t.Errorf("tags = %+v, want one tag t_1", tags)
+	}
+}
+
 func TestTagColors_CoversDocumentedPalette(t *testing.T) {
 	if len(TagColors) != 26 {
 		t.Errorf("len(TagColors) = %d, want 26", len(TagColors))
