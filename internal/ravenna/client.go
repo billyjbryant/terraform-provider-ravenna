@@ -76,6 +76,9 @@ func New(baseURL, token string, opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(c)
 	}
+	if c.maxRetries < 0 {
+		c.maxRetries = 0
+	}
 	return c, nil
 }
 

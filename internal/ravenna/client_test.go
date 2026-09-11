@@ -168,3 +168,30 @@ func TestNew_RejectsEmptyToken(t *testing.T) {
 		t.Fatal("New with empty token returned nil error, want failure")
 	}
 }
+
+func TestNew_ClampsNegativeMaxRetries(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		_, _ = w.Write([]byte(`{"id":"q_1"}`))
+	}))
+	defer srv.Close()
+
+	c, err := New(srv.URL, "test-token", WithMaxRetries(-1))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	var out struct {
+		ID string `json:"id"`
+	}
+	if err := c.do(context.Background(), http.MethodGet, "/queues/q_1", nil, nil, &out); err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Errorf("calls = %d, want 1 — a negative maxRetries must still make one request", got)
+	}
+	if out.ID != "q_1" {
+		t.Errorf("out.ID = %q, want q_1 — the response must still be decoded", out.ID)
+	}
+}
