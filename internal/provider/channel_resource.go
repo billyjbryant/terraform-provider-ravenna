@@ -119,7 +119,7 @@ func (r *channelResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "Channel type assigned by Ravenna: `DEFAULT`, `PORTAL`, `DM` or `PERSONAL_DM`.",
+				MarkdownDescription: "Channel type assigned by Ravenna: `DEFAULT`, `PORTAL`, `DM`, `PERSONAL_DM` or `AGENT_RUNS`.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

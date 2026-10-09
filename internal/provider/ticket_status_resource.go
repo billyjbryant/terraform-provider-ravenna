@@ -34,12 +34,13 @@ type ticketStatusResource struct {
 }
 
 type ticketStatusResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	Label         types.String `tfsdk:"label"`
-	StatusGroupID types.String `tfsdk:"status_group_id"`
-	RequestTypeID types.String `tfsdk:"request_type_id"`
-	Order         types.Int64  `tfsdk:"order"`
-	System        types.Bool   `tfsdk:"system"`
+	ID                   types.String `tfsdk:"id"`
+	Label                types.String `tfsdk:"label"`
+	StatusGroupID        types.String `tfsdk:"status_group_id"`
+	RequestTypeID        types.String `tfsdk:"request_type_id"`
+	Order                types.Int64  `tfsdk:"order"`
+	System               types.Bool   `tfsdk:"system"`
+	DeleteTargetStatusID types.String `tfsdk:"delete_target_status_id"`
 }
 
 func (r *ticketStatusResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -94,6 +95,16 @@ func (r *ticketStatusResource) Schema(_ context.Context, _ resource.SchemaReques
 			"system": schema.BoolAttribute{
 				MarkdownDescription: "Whether Ravenna manages this status as a system status.",
 				Computed:            true,
+			},
+			"delete_target_status_id": schema.StringAttribute{
+				MarkdownDescription: "Status to move this status's tickets onto when it is destroyed. " +
+					"Only used on destroy, and Terraform destroys with the value already in state, so " +
+					"apply a change to this attribute before destroying the status. Not read back " +
+					"from the API; an imported status shows it as null.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
 			},
 		},
 	}
@@ -223,7 +234,7 @@ func (r *ticketStatusResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	err := r.data.Client.DeleteStatus(ctx, state.ID.ValueString())
+	err := r.data.Client.DeleteStatus(ctx, state.ID.ValueString(), state.DeleteTargetStatusID.ValueString())
 	if err != nil {
 		var apiErr *ravenna.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {

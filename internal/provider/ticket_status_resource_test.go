@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestAccTicketStatusResource_lifecycle(t *testing.T) {
@@ -91,4 +92,70 @@ resource "ravenna_ticket_status" "test" {
   order           = %[3]d
 }
 `, baseURL, label, order)
+}
+
+func TestAccTicketStatusResource_deleteMovesTicketsToTarget(t *testing.T) {
+	srv, fake := newFakeRavennaWithState(t)
+	var retiredID, fallbackID string
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testStatusConfigWithDeleteTarget(srv.URL),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(
+						"ravenna_ticket_status.retired", "delete_target_status_id",
+						"ravenna_ticket_status.fallback", "id",
+					),
+					func(s *terraform.State) error {
+						retiredID = s.RootModule().Resources["ravenna_ticket_status.retired"].Primary.ID
+						fallbackID = s.RootModule().Resources["ravenna_ticket_status.fallback"].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				ResourceName:            "ravenna_ticket_status.retired",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"delete_target_status_id"},
+			},
+		},
+		CheckDestroy: func(_ *terraform.State) error {
+			fake.mu.Lock()
+			defer fake.mu.Unlock()
+			if got := fake.deleteTargets[retiredID]; got != fallbackID {
+				return fmt.Errorf("status %s deleted with targetStatusId %q, want %q", retiredID, got, fallbackID)
+			}
+			if got, ok := fake.deleteTargets[fallbackID]; ok {
+				return fmt.Errorf("status %s deleted with targetStatusId %q, want none", fallbackID, got)
+			}
+			return nil
+		},
+	})
+}
+
+func testStatusConfigWithDeleteTarget(baseURL string) string {
+	return fmt.Sprintf(`
+provider "ravenna" {
+  api_token = "test-token"
+  base_url  = %[1]q
+}
+
+data "ravenna_status_group" "pending" {
+  label = "Pending"
+}
+
+resource "ravenna_ticket_status" "fallback" {
+  label           = "Waiting"
+  status_group_id = data.ravenna_status_group.pending.id
+}
+
+resource "ravenna_ticket_status" "retired" {
+  label                   = "Waiting on vendor"
+  status_group_id         = data.ravenna_status_group.pending.id
+  delete_target_status_id = ravenna_ticket_status.fallback.id
+}
+`, baseURL)
 }

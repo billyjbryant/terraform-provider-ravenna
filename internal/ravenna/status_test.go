@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -109,7 +110,7 @@ func TestDeleteStatus_UsesIDQueryParam(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(srv.URL, "test-token")
-	if err := c.DeleteStatus(context.Background(), "s_2"); err != nil {
+	if err := c.DeleteStatus(context.Background(), "s_2", ""); err != nil {
 		t.Fatalf("DeleteStatus: %v", err)
 	}
 
@@ -118,5 +119,27 @@ func TestDeleteStatus_UsesIDQueryParam(t *testing.T) {
 	}
 	if gotQuery != "id=s_2" {
 		t.Errorf("query = %q, want id=s_2", gotQuery)
+	}
+}
+
+func TestDeleteStatus_ForwardsTargetStatusID(t *testing.T) {
+	var gotQuery url.Values
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c, _ := New(srv.URL, "test-token")
+	if err := c.DeleteStatus(context.Background(), "s_2", "s_1"); err != nil {
+		t.Fatalf("DeleteStatus: %v", err)
+	}
+
+	if got := gotQuery.Get("id"); got != "s_2" {
+		t.Errorf("id = %q, want s_2", got)
+	}
+	if got := gotQuery.Get("targetStatusId"); got != "s_1" {
+		t.Errorf("targetStatusId = %q, want s_1", got)
 	}
 }

@@ -18,15 +18,28 @@ type fakeRavenna struct {
 	channels map[string]map[string]any
 	tags     map[string]map[string]any
 	statuses map[string]map[string]any
+
+	// deleteTargets records the targetStatusId each deleted status was sent
+	// with, keyed by the deleted status's id.
+	deleteTargets map[string]string
 }
 
 func newFakeRavenna(t *testing.T) *httptest.Server {
 	t.Helper()
+	srv, _ := newFakeRavennaWithState(t)
+	return srv
+}
+
+// newFakeRavennaWithState also returns the fake itself, for tests that assert
+// on what the provider sent after the run, such as during destroy.
+func newFakeRavennaWithState(t *testing.T) (*httptest.Server, *fakeRavenna) {
+	t.Helper()
 
 	f := &fakeRavenna{
-		channels: map[string]map[string]any{},
-		tags:     map[string]map[string]any{},
-		statuses: map[string]map[string]any{},
+		channels:      map[string]map[string]any{},
+		tags:          map[string]map[string]any{},
+		statuses:      map[string]map[string]any{},
+		deleteTargets: map[string]string{},
 	}
 
 	mux := http.NewServeMux()
@@ -83,7 +96,7 @@ func newFakeRavenna(t *testing.T) *httptest.Server {
 		case http.MethodPut:
 			f.updateStatus(w, r)
 		case http.MethodDelete:
-			f.deleteStatus(w, r.URL.Query().Get("id"))
+			f.deleteStatus(w, r.URL.Query().Get("id"), r.URL.Query().Get("targetStatusId"))
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -91,7 +104,7 @@ func newFakeRavenna(t *testing.T) *httptest.Server {
 
 	srv := httptest.NewServer(authMiddleware(t, mux))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, f
 }
 
 // authMiddleware asserts every request carries the API token, so a regression
@@ -302,13 +315,20 @@ func (f *fakeRavenna) updateStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, st)
 }
 
-func (f *fakeRavenna) deleteStatus(w http.ResponseWriter, id string) {
+func (f *fakeRavenna) deleteStatus(w http.ResponseWriter, id, targetStatusID string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	if _, ok := f.statuses[id]; !ok {
 		writeAPIError(w, http.StatusNotFound, "not_found", "no such status")
 		return
+	}
+	if targetStatusID != "" {
+		if _, ok := f.statuses[targetStatusID]; !ok {
+			writeAPIError(w, http.StatusBadRequest, "invalid_target_status", "no such target status")
+			return
+		}
+		f.deleteTargets[id] = targetStatusID
 	}
 	delete(f.statuses, id)
 	w.WriteHeader(http.StatusOK)

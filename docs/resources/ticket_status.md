@@ -33,6 +33,7 @@ resource "ravenna_ticket_status" "waiting_on_vendor" {
 
 ### Optional
 
+- `delete_target_status_id` (String) Status to move this status's tickets onto when it is destroyed. Only used on destroy, and Terraform destroys with the value already in state, so apply a change to this attribute before destroying the status. Not read back from the API; an imported status shows it as null.
 - `order` (Number) Display order within the status group.
 - `request_type_id` (String) Restrict the status to a single request type. Write-only: the Ravenna API accepts this at creation but does not return it as a scalar, so Terraform cannot detect drift on it and an imported status will show it as null. Changing this forces a new status.
 

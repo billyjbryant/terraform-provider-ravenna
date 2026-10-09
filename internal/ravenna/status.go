@@ -99,8 +99,12 @@ func (c *Client) UpdateStatus(ctx context.Context, req StatusUpdateRequest) (*St
 }
 
 // DeleteStatus deletes a status. The API takes the id as a query parameter on
-// the collection rather than DELETE /statuses/{id}.
-func (c *Client) DeleteStatus(ctx context.Context, id string) error {
+// the collection rather than DELETE /statuses/{id}. A non-empty targetStatusID
+// moves the deleted status's tickets onto that status.
+func (c *Client) DeleteStatus(ctx context.Context, id, targetStatusID string) error {
 	q := url.Values{"id": []string{id}}
+	if targetStatusID != "" {
+		q.Set("targetStatusId", targetStatusID)
+	}
 	return c.do(ctx, http.MethodDelete, "/statuses", q, nil, nil)
 }

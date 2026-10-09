@@ -39,7 +39,7 @@ resource "ravenna_channel" "it_helpdesk" {
 
 - `id` (String) Channel identifier.
 - `system` (Boolean) Whether Ravenna manages this channel as a system channel.
-- `type` (String) Channel type assigned by Ravenna: `DEFAULT`, `PORTAL`, `DM` or `PERSONAL_DM`.
+- `type` (String) Channel type assigned by Ravenna: `DEFAULT`, `PORTAL`, `DM`, `PERSONAL_DM` or `AGENT_RUNS`.
 
 ## Import
 
