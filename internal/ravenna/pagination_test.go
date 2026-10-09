@@ -97,7 +97,7 @@ func TestListAll_StopsOnRepeatedCursor(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		// A server that always returns the same cursor would loop forever.
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[{"id":"x%d"}],"totalCount":99,"nextCursor":"stuck"}`, calls)))
+		_, _ = fmt.Fprintf(w, `{"items":[{"id":"x%d"}],"totalCount":99,"nextCursor":"stuck"}`, calls)
 	}))
 	defer srv.Close()
 

@@ -8,7 +8,7 @@ test:
 
 lint:
 	golangci-lint run ./...
-	npx --yes markdownlint-cli2 '**/*.md'
+	npx --yes markdownlint-cli2@0.23.2
 
 fmt:
 	go fmt ./...
