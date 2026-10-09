@@ -1,6 +1,6 @@
 [tools]
 go = "1.26"
 terraform = "1.14"
-golangci-lint = "latest"
+golangci-lint = "2.14.0"
 goreleaser = "latest"
-"go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" = "latest"
+"go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" = "0.25.0"
