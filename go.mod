@@ -1,4 +1,4 @@
-module github.com/RavennaHQ/terraform-provider-ravenna
+module github.com/billyjbryant/terraform-provider-ravenna
 
 go 1.26.5
 

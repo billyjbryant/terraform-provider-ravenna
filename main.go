@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"github.com/RavennaHQ/terraform-provider-ravenna/internal/provider"
+	"github.com/billyjbryant/terraform-provider-ravenna/internal/provider"
 )
 
 // version is set by goreleaser at build time.
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	err := providerserver.Serve(context.Background(), provider.New(version), providerserver.ServeOpts{
-		Address: "registry.terraform.io/ravennahq/ravenna",
+		Address: "registry.terraform.io/billyjbryant/ravenna",
 		Debug:   debug,
 	})
 	if err != nil {

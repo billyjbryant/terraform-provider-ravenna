@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/RavennaHQ/terraform-provider-ravenna/internal/ravenna"
+	"github.com/billyjbryant/terraform-provider-ravenna/internal/ravenna"
 )
 
 var (

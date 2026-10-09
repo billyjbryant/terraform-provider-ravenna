@@ -15,7 +15,7 @@ Manage Ravenna service management configuration.
 terraform {
   required_providers {
     ravenna = {
-      source = "ravennahq/ravenna"
+      source = "billyjbryant/ravenna"
     }
   }
 }
